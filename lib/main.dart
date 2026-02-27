@@ -43,15 +43,15 @@ class _CoolingScreenState extends State<CoolingScreen> with SingleTickerProvider
     final text = _controller.text.trim().toLowerCase();
 
     setState(() {
-      if (text == "ddr5 is very expensive") {
+      if (text == 'ddr5 is very expensive') {
         _fanSpeed = 0;
-        _showAlert("Magic Detected", "System killed by a curse!");
+        _showAlert('Magic Detected', 'System killed by a curse!');
       } else {
         final value = int.tryParse(text);
         if (value != null) {
           _fanSpeed = (_fanSpeed + value).clamp(0, 150);
           if (_fanSpeed > 100) {
-            _showAlert("Warning", "Overclocking detected!");
+            _showAlert('Warning', 'Overclocking detected!');
           }
         }
       }
@@ -76,7 +76,7 @@ class _CoolingScreenState extends State<CoolingScreen> with SingleTickerProvider
           actions: [
             TextButton(
               onPressed: () { Navigator.pop(ctx); },
-              child: const Text("OK"),
+              child: const Text('OK'),
             ),
           ],
         );
@@ -89,13 +89,13 @@ class _CoolingScreenState extends State<CoolingScreen> with SingleTickerProvider
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          "Cooling System",
-          style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold)
+          'Cooling System',
+          style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold)
           ),
         centerTitle: true
         ),
       body: Padding(
-        padding: const EdgeInsets.all(25.0),
+        padding: const EdgeInsets.all(25),
         child: Column(
           children: [
             const Spacer(),
@@ -110,21 +110,21 @@ class _CoolingScreenState extends State<CoolingScreen> with SingleTickerProvider
             const SizedBox(
               height: 20
               ),
-            Text("$_fanSpeed%", style: const TextStyle(fontSize: 70, fontWeight: FontWeight.bold)),
-            const Text("CURRENT FAN LOAD"),
+            Text('$_fanSpeed%', style: const TextStyle(fontSize: 70, fontWeight: FontWeight.bold)),
+            const Text('CURRENT FAN LOAD'),
             const Spacer(),
             TextField(
               controller: _controller,
               decoration: const InputDecoration(
-                labelText: "Boost speed or enter command",
+                labelText: 'Boost speed or enter command',
                 border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 15),
             ElevatedButton(
-              onPressed: () { _updateSpeed(); },
+              onPressed: _updateSpeed,
               style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
-              child: const Text("APPLY CHANGES"),
+              child: const Text('APPLY CHANGES'),
             ),
           ],
         ),
