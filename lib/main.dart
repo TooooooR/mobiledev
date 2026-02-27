@@ -25,7 +25,8 @@ class CoolingScreen extends StatefulWidget {
 }
 
 // SingleTickerProviderStateMixin потрібен для плавної роботи анімації
-class _CoolingScreenState extends State<CoolingScreen> with SingleTickerProviderStateMixin {
+class _CoolingScreenState extends State<CoolingScreen> 
+    with SingleTickerProviderStateMixin {
   int _fanSpeed = 30;
   final _controller = TextEditingController();
   late AnimationController _animController;
@@ -57,7 +58,8 @@ class _CoolingScreenState extends State<CoolingScreen> with SingleTickerProvider
       }
       
       if (_fanSpeed > 0) {
-        _animController.duration = Duration(milliseconds: (2000 / (_fanSpeed / 20 + 1)).round());
+        _animController.duration = Duration(
+          milliseconds: (2000 / (_fanSpeed / 20 + 1)).round());
         _animController.repeat();
       } else {
         _animController.stop();
@@ -110,7 +112,9 @@ class _CoolingScreenState extends State<CoolingScreen> with SingleTickerProvider
             const SizedBox(
               height: 20
               ),
-            Text('$_fanSpeed%', style: const TextStyle(fontSize: 70, fontWeight: FontWeight.bold)),
+            Text('$_fanSpeed%', style: const TextStyle(
+              fontSize: 70, fontWeight: FontWeight.bold
+              )),
             const Text('CURRENT FAN LOAD'),
             const Spacer(),
             TextField(
@@ -123,7 +127,9 @@ class _CoolingScreenState extends State<CoolingScreen> with SingleTickerProvider
             const SizedBox(height: 15),
             ElevatedButton(
               onPressed: _updateSpeed,
-              style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 50)
+                ),
               child: const Text('APPLY CHANGES'),
             ),
           ],
