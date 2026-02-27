@@ -67,7 +67,7 @@ class _CoolingScreenState extends State<CoolingScreen> with SingleTickerProvider
   }
 
   void _showAlert(String title, String msg) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (ctx) {
         return AlertDialog(
