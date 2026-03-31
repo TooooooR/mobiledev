@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter_app/models/station.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_app/models/user.dart';
 import 'package:flutter_app/widgets/build_stat_card.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -10,84 +12,131 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  PCStation selectedStation = myStations[0];
+  User? user;
+  String? selectedStationId;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData(); // Завантажуємо дані один раз при старті
+  }
+
+  Future<void> _loadData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? userJson = prefs.getString('current_session_user');
+
+    if (userJson != null) {
+      final loadedUser = User.fromJson(jsonDecode(userJson) as Map<String, dynamic>);
+      setState(() {
+        user = loadedUser;
+        // Вибираємо ID тільки якщо він ще не вибраний
+        if (selectedStationId == null && loadedUser.stations.isNotEmpty) {
+          selectedStationId = loadedUser.stations.first.id;
+        }
+        isLoading = false;
+      });
+    } else {
+      if (mounted) Navigator.pushReplacementNamed(context, '/login');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading || user == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator(color: Colors.cyanAccent)));
+    }
+
+    final stations = user!.stations;
+
+    // Якщо станцій немає
+    if (stations.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('PCMonitor')),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('Немає станцій'),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () async {
+                  await Navigator.pushNamed(context, '/profile');
+                  _loadData(); // після повернення
+                },
+                child: const Text('Перейти в профіль'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Знаходимо поточну станцію безпечно
+    final currentStation = stations.firstWhere(
+          (s) => s.id == selectedStationId,
+      orElse: () => stations.first,
+    );
+
     return Scaffold(
       appBar: AppBar(
         title: DropdownButtonHideUnderline(
-          child: DropdownButton<PCStation>(
-            value: selectedStation,
+          child: DropdownButton<String>(
+            value: currentStation.id,
             dropdownColor: Colors.grey[900],
+            isDense: true, // Допомагає уникнути багів з висотою в AppBar
             icon: const Icon(Icons.arrow_drop_down, color: Colors.cyanAccent),
-            items: myStations.map((PCStation station) {
-              return DropdownMenuItem<PCStation>(
-                value: station,
-                child: Row(
-                  children: [
-                    Icon(
-                      station.type == 'Server' ? Icons.dns : Icons.computer,
-                      size: 20,
-                      color: Colors.cyanAccent,
-                    ),
-                    const SizedBox(width: 10),
-                    Text(station.name, style: const TextStyle(fontSize: 18)),
-                  ],
-                ),
-              );
-            }).toList(),
-            onChanged: (PCStation? newValue) {
-              setState(() {
-                selectedStation = newValue!;
-              });
+            items: stations.map((s) => DropdownMenuItem(
+              value: s.id,
+              child: Text(s.name, style: const TextStyle(color: Colors.white)),
+            )).toList(),
+            onChanged: (newId) {
+              if (newId != null) {
+                setState(() => selectedStationId = newId);
+              }
             },
           ),
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.person),
-            onPressed: () => Navigator.pushNamed(context, '/profile'),
+            onPressed: () async {
+              // await чекає, поки ти закриєш профіль
+              await Navigator.pushNamed(context, '/profile', arguments: user);
+              _loadData(); // Оновлюємо дані, якщо в профілі щось змінили
+            },
           ),
-          const SizedBox(width: 12),
         ],
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      body: GridView.count(
+        padding: const EdgeInsets.all(16),
+        crossAxisCount: 2,
+        mainAxisSpacing: 16,
+        crossAxisSpacing: 16,
         children: [
-          Expanded(
-            child: GridView.count(
-              padding: const EdgeInsets.all(16),
-              crossAxisCount: 2,
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 16,
-              children: [
-                const BuildStatCard(
-                  title: 'CPU Load', 
-                  value: '45%', 
-                  icon: Icons.speed, 
-                  color: Colors.orange
-                ),
-                const BuildStatCard(
-                  title: 'RAM', 
-                  value: '8/16 GB', 
-                  icon: Icons.memory, 
-                  color: Colors.blue
-                ),
-                const BuildStatCard(
-                  title: 'Temp', 
-                  value: '52°C', 
-                  icon: Icons.thermostat, 
-                  color: Colors.red
-                ),
-                const BuildStatCard(
-                  title: 'Uptime', 
-                  value: '2h 15m', 
-                  icon: Icons.timer, 
-                  color: Colors.green
-                ),
-              ],
-            ),
+          BuildStatCard(
+            title: 'CPU Load',
+            value: '${currentStation.stats.cpuLoad.toStringAsFixed(0)}%',
+            icon: Icons.speed,
+            color: Colors.orange,
+          ),
+          BuildStatCard(
+            title: 'RAM',
+            value: '${currentStation.stats.ramUsage.toStringAsFixed(0)} MB',
+            icon: Icons.memory,
+            color: Colors.blue,
+          ),
+          BuildStatCard(
+            title: 'Temp',
+            value: '${currentStation.stats.temperature.toStringAsFixed(0)}°C',
+            icon: Icons.thermostat,
+            color: Colors.red,
+          ),
+          BuildStatCard(
+            title: 'Uptime',
+            value: currentStation.stats.uptime,
+            icon: Icons.timer,
+            color: Colors.green,
           ),
         ],
       ),
