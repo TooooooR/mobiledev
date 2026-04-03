@@ -2,8 +2,8 @@ import 'package:flutter_app/models/system_stats.dart';
 
 class Station {
   final String id;
-  String name;        // Прибрали final
-  bool isOn;          // Додали статус
+  String name;
+  bool isOn;
   SystemStats stats;
 
   Station({

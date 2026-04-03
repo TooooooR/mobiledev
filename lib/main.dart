@@ -15,7 +15,7 @@ void main() async {
 
 class PCMonitor extends StatelessWidget {
   final String initialRoute;
-  const PCMonitor({super.key, required this.initialRoute});
+  const PCMonitor({required this.initialRoute, super.key});
 
   @override
   Widget build(BuildContext context) {

@@ -47,11 +47,23 @@ class _LoginScreenState extends State<LoginScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(Icons.monitor_heart, size: 80, color: Colors.cyanAccent),
-            const Text('PCMonitor', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+            const Text(
+              'PCMonitor', 
+              style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)
+              ),
             const SizedBox(height: 40),
-            AppInput(label: 'Email', icon: Icons.email, controller: _emailController),
+            AppInput(
+              label: 'Email', 
+              icon: Icons.email, 
+              controller: _emailController
+              ),
             const SizedBox(height: 16),
-            AppInput(label: 'Password', icon: Icons.lock, isPassword: true, controller: _passController),
+            AppInput(
+              label: 'Password', 
+              icon: Icons.lock, 
+              isPassword: true, 
+              controller: _passController
+            ),
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: _handleLogin,

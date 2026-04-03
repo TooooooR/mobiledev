@@ -22,12 +22,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   void _register() async {
     if (_formKey.currentState!.validate()) {
-      // Створюємо дефолтні станції для нового користувача
       final defaultStations = [
         Station(
           id: '1', 
           name: 'Main Server', 
-          stats: SystemStats(cpuLoad: 10, ramUsage: 2048, temperature: 40, uptime: '0h 0m')
+          stats: const SystemStats(
+            cpuLoad: 10, 
+            ramUsage: 2048, 
+            temperature: 40, 
+            uptime: '0h 0m'
+            )
         ),
       ];
 
@@ -63,8 +67,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 icon: Icons.person,
                 controller: _nameController,
                 validator: (value) {
-                  if (value == null || value.isEmpty) return 'Введіть ім\'я';
-                  if (RegExp(r'[0-9]').hasMatch(value)) return 'Ім\'я не повинно містити цифр';
+                  if (value == null || value.isEmpty) {
+                    return 'Введіть ім\'я';
+                  }
+                  if (RegExp(r'[0-9]').hasMatch(value)) {
+                    return 'Ім\'я не повинно містити цифр';
+                  }
                   return null;
                 },
               ),
@@ -74,7 +82,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 icon: Icons.email,
                 controller: _emailController,
                 validator: (value) {
-                  if (value == null || !value.contains('@')) return 'Введіть коректний Email';
+                  if (value == null || !value.contains('@')) {
+                    return 'Введіть коректний Email';
+                  }
                   return null;
                 },
               ),
@@ -84,7 +94,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 icon: Icons.lock, 
                 isPassword: true,
                 controller: _passController,
-                validator: (value) => (value != null && value.length < 6) ? 'Мінімум 6 символів' : null,
+                validator: (value) {
+                  if (value == null || value.length < 6) {
+                    return 'Мінімум 6 символів';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 32),
               ElevatedButton(

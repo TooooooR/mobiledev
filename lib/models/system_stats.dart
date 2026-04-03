@@ -1,8 +1,8 @@
 class SystemStats {
-  final double cpuLoad;      // %
-  final double ramUsage;     // MB або %
-  final double temperature;  // °C
-  final String uptime;       // Формат "1d 5h 20m"
+  final double cpuLoad;
+  final double ramUsage;  
+  final double temperature; 
+  final String uptime;     
 
   const SystemStats({
     required this.cpuLoad,
@@ -11,7 +11,6 @@ class SystemStats {
     required this.uptime,
   });
 
-  // Конвертація в Map для JSON
   Map<String, dynamic> toJson() => {
     'cpuLoad': cpuLoad,
     'ramUsage': ramUsage,
@@ -19,7 +18,6 @@ class SystemStats {
     'uptime': uptime,
   };
 
-  // Створення об'єкта з JSON
   factory SystemStats.fromJson(Map<String, dynamic> json) {
     return SystemStats(
       cpuLoad: (json['cpuLoad'] as num).toDouble(),
