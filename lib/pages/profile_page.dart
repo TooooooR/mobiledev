@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
@@ -6,6 +7,7 @@ import 'package:flutter_app/models/station.dart';
 import 'package:flutter_app/models/system_stats.dart';
 import 'package:flutter_app/models/user.dart';
 import 'package:flutter_app/repositories/local_auth_repository.dart';
+import 'package:flutter_app/repositories/mqtt_temperature_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -16,7 +18,17 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  static const String _mqttServer = '10.156.119.71';
+  static const String _mqttWebSocketServer = 'ws://10.156.119.71';
+  static const String _mqttTopic = 'esp8266/temperature';
+
   User? currentUser;
+  late final MqttTemperatureService _mqttService;
+
+  double? _sensorTemperature;
+  bool _mqttConnected = false;
+  StreamSubscription<double?>? _temperatureSub;
+  StreamSubscription<bool>? _connectionSub;
 
   final _nameController = TextEditingController();
   final _cpuController = TextEditingController();
@@ -26,7 +38,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
+    _mqttService = MqttTemperatureService(
+      server: _mqttServer,
+      clientId: 'flutter_profile_${DateTime.now().millisecondsSinceEpoch}',
+      topic: _mqttTopic,
+      websocketServer: _mqttWebSocketServer,
+    );
+    _temperatureSub = _mqttService.temperatureStream.listen((value) {
+      if (!mounted || value == null) return;
+      setState(() => _sensorTemperature = value);
+    });
+    _connectionSub = _mqttService.connectionStream.listen((connected) {
+      if (!mounted) return;
+      setState(() => _mqttConnected = connected);
+    });
+
     _loadUser();
+    _mqttService.connect();
+  }
+
+  @override
+  void dispose() {
+    _temperatureSub?.cancel();
+    _connectionSub?.cancel();
+    _nameController.dispose();
+    _cpuController.dispose();
+    _ramController.dispose();
+    _tempController.dispose();
+    _mqttService.dispose();
+    super.dispose();
   }
 
   Future<void> _loadUser() async {
@@ -195,6 +235,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await _saveData();
   }
 
+  Future<void> _confirmLogout() async {
+    final navigator = Navigator.of(context);
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Підтвердження виходу'),
+        content: const Text('Ви дійсно хочете вийти з акаунта?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Скасувати'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Вийти'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout != true) {
+      return;
+    }
+
+    final authRepo = LocalAuthRepository();
+    await authRepo.clearSession();
+    if (mounted) {
+      navigator.pushReplacementNamed('/login');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (currentUser == null) return const Scaffold();
@@ -219,6 +290,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Text(
               currentUser!.email, 
               style: const TextStyle(color: Colors.grey)),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  _mqttConnected ? Icons.sensors : Icons.sensors_off,
+                  size: 16,
+                  color: _mqttConnected ? Colors.greenAccent : Colors.redAccent,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  !_mqttConnected
+                      ? 'Немає з\'єднання з брокером'
+                      : _sensorTemperature == null
+                      ? 'Температура: очікуємо дані...'
+                      : 'Температура: '
+                          '${_sensorTemperature!.toStringAsFixed(1)} °C',
+                  style: const TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(width: 8),
+              ],
+            ),
             const Divider(height: 30),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -260,14 +353,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             TextButton.icon(
-              onPressed: () async {
-                final navigator = Navigator.of(context);
-                final authRepo = LocalAuthRepository();
-                await authRepo.clearSession();
-                if (mounted) {
-                  navigator.pushReplacementNamed('/login');
-                }
-              },
+              onPressed: _confirmLogout,
               icon: const Icon(Icons.logout, color: Colors.red),
               label: const Text('Вийти', style: TextStyle(color: Colors.red)),
             ),

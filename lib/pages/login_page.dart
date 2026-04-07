@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/models/user.dart';
 import 'package:flutter_app/repositories/local_auth_repository.dart';
+import 'package:flutter_app/repositories/network_status_service.dart';
 import 'package:flutter_app/widgets/app_input.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -14,8 +15,21 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passController = TextEditingController();
   final _authRepo = LocalAuthRepository();
+  final _networkStatus = NetworkStatusService();
 
   void _handleLogin() async {
+    final isOnline = await _networkStatus.isOnline();
+    if (!isOnline) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Немає з\'єднання з Інтернетом. Вхід неможливий.'),
+          ),
+        );
+      }
+      return;
+    }
+
     final User? user = await _authRepo.login(
       _emailController.text, 
       _passController.text
@@ -36,6 +50,13 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passController.dispose();
+    super.dispose();
   }
 
   @override
