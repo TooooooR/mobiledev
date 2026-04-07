@@ -3,13 +3,19 @@ import 'package:flutter_app/pages/home_page.dart';
 import 'package:flutter_app/pages/login_page.dart';
 import 'package:flutter_app/pages/profile_page.dart';
 import 'package:flutter_app/pages/register_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
-  runApp(const PCMonitor());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final prefs = await SharedPreferences.getInstance();
+  final hasUser = prefs.containsKey('current_session_user');
+  
+  runApp(PCMonitor(initialRoute: hasUser ? '/home' : '/login'));
 }
 
 class PCMonitor extends StatelessWidget {
-  const PCMonitor({super.key});
+  final String initialRoute;
+  const PCMonitor({required this.initialRoute, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +28,7 @@ class PCMonitor extends StatelessWidget {
           brightness: Brightness.dark,
         ),
       ),
-      initialRoute: '/login',
+      initialRoute: initialRoute,
       routes: {
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),

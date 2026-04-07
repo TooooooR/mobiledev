@@ -1,8 +1,42 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app/models/user.dart';
+import 'package:flutter_app/repositories/local_auth_repository.dart';
 import 'package:flutter_app/widgets/app_input.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final _emailController = TextEditingController();
+  final _passController = TextEditingController();
+  final _authRepo = LocalAuthRepository();
+
+  void _handleLogin() async {
+    final User? user = await _authRepo.login(
+      _emailController.text, 
+      _passController.text
+    );
+
+    if (user != null) {
+      if (mounted) {
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/home',
+              (route) => false,
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Невірний e-mail або пароль!')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -13,21 +47,31 @@ class LoginScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(Icons.monitor_heart, size: 80, color: Colors.cyanAccent),
-            const Text('PCMonitor', style: TextStyle(
-              fontSize: 32, fontWeight: FontWeight.bold)),
+            const Text(
+              'PCMonitor', 
+              style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)
+              ),
             const SizedBox(height: 40),
-            const AppInput(label: 'Email', icon: Icons.email),
+            AppInput(
+              label: 'Email', 
+              icon: Icons.email, 
+              controller: _emailController
+              ),
             const SizedBox(height: 16),
-            const AppInput(label:'Password',icon: Icons.lock, isPassword: true),
+            AppInput(
+              label: 'Password', 
+              icon: Icons.lock, 
+              isPassword: true, 
+              controller: _passController
+            ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: () => Navigator.pushReplacementNamed(context, '/home'),
+              onPressed: _handleLogin,
               child: const Text('Увійти'),
             ),
-            const SizedBox(height: 10),
             TextButton(
               onPressed: () => Navigator.pushNamed(context, '/register'),
-              child: const Text('Немає акаунту?  Реєстрація'),
+              child: const Text('Немає акаунту? Реєстрація'),
             ),
           ],
         ),
