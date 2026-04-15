@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_app/models/station.dart';
 import 'package:flutter_app/models/user.dart';
+import 'package:flutter_app/repositories/network_status_service.dart';
 import 'package:flutter_app/widgets/build_stat_card.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -18,6 +20,68 @@ class _HomeScreenState extends State<HomeScreen> {
   User? _user;
   bool _isLoading = true;
   bool _isInitialized = false;
+  bool _isOnline = true;
+  bool _offlineAutoLoginWarningShown = false;
+
+  final NetworkStatusService _networkStatus = NetworkStatusService();
+  StreamSubscription<bool>? _networkSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _startNetworkMonitoring();
+  }
+
+  Future<void> _startNetworkMonitoring() async {
+    final initialOnline = await _networkStatus.isOnline();
+    if (!mounted) return;
+
+    setState(() {
+      _isOnline = initialOnline;
+    });
+
+    _networkSubscription = _networkStatus.onStatusChanged.listen((isOnline) {
+      if (!mounted) return;
+
+      final wasOnline = _isOnline;
+      setState(() {
+        _isOnline = isOnline;
+      });
+
+      if (wasOnline && !isOnline) {
+        _showConnectivityMessage('Інтернет-з\'єднання втрачено.');
+      } else if (!wasOnline && isOnline) {
+        _showConnectivityMessage('Інтернет-з\'єднання відновлено.');
+      }
+    });
+  }
+
+  void _showConnectivityMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  Widget _buildOfflineBar() {
+    return Container(
+      color: Colors.red.shade700,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: const SafeArea(
+        top: false,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.wifi_off, color: Colors.white, size: 18),
+            SizedBox(width: 8),
+            Text(
+              'Офлайн режим: перевірте Інтернет-з\'єднання',
+              style: TextStyle(color: Colors.white),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Future<User?> _loadUser(Object? args) async {
     if (args is User) return args;
@@ -54,6 +118,23 @@ class _HomeScreenState extends State<HomeScreen> {
       }
       _isLoading = false;
     });
+
+    final isOnlineNow = await _networkStatus.isOnline();
+    if (!mounted) return;
+
+    if (_isOnline != isOnlineNow) {
+      setState(() {
+        _isOnline = isOnlineNow;
+      });
+    }
+
+    if (!isOnlineNow && !_offlineAutoLoginWarningShown) {
+      _offlineAutoLoginWarningShown = true;
+      _showConnectivityMessage(
+        'Автовхід виконано без Інтернету. '
+        'Деякі функції можуть бути недоступні.',
+      );
+    }
   }
 
   Future<void> _refreshUserFromStorage() async {
@@ -80,6 +161,12 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_isInitialized) return;
     _isInitialized = true;
     _initializeHomeData();
+  }
+
+  @override
+  void dispose() {
+    _networkSubscription?.cancel();
+    super.dispose();
   }
 
   @override
@@ -116,6 +203,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
+        bottomNavigationBar: _isOnline ? null : _buildOfflineBar(),
         body: const Center(
           child: Text('У вас ще немає станцій. Додайте їх у профілі.'),
         ),
@@ -157,6 +245,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(width: 8),
         ],
       ),
+      bottomNavigationBar: _isOnline ? null : _buildOfflineBar(),
       body: GridView.count(
         padding: const EdgeInsets.all(16),
         crossAxisCount: 2,

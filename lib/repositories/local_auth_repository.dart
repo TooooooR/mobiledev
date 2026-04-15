@@ -1,12 +1,15 @@
 import 'dart:convert';
+
 import 'package:flutter_app/models/user.dart';
+import 'package:flutter_app/repositories/i_auth_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class LocalAuthRepository {
+class LocalAuthRepository extends IAuthRepository {
   final String _usersListKey = 'all_users_list';
   final String _currentUserKey = 'current_session_user';
 
   // РЕЄСТРАЦІЯ
+  @override
   Future<void> registerUser(User newUser) async {
     final prefs = await SharedPreferences.getInstance();
     final List<User> allUsers = await _getAllUsers();
@@ -34,6 +37,7 @@ class LocalAuthRepository {
   }
 
   // ЛОГІН
+  @override
   Future<User?> login(String email, String password) async {
     final prefs = await SharedPreferences.getInstance();
     final List<User> allUsers = await _getAllUsers();
@@ -81,6 +85,7 @@ class LocalAuthRepository {
   }
 
   // ВИХІД
+  @override
   Future<void> clearSession() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_currentUserKey);
