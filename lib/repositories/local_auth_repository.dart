@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class LocalAuthRepository extends IAuthRepository {
   final String _usersListKey = 'all_users_list';
   final String _currentUserKey = 'current_session_user';
+  final String _tokenKey = 'auth_token';
 
   // РЕЄСТРАЦІЯ
   @override
@@ -16,8 +17,7 @@ class LocalAuthRepository extends IAuthRepository {
 
     // Видаляємо дублікат за імейлом
     allUsers.removeWhere(
-      (u) => u.email.trim().toLowerCase() == 
-             newUser.email.trim().toLowerCase(),
+      (u) => u.email.trim().toLowerCase() == newUser.email.trim().toLowerCase(),
     );
 
     allUsers.add(newUser);
@@ -26,14 +26,11 @@ class LocalAuthRepository extends IAuthRepository {
     final String encodedList = jsonEncode(
       allUsers.map((u) => u.toJson()).toList(),
     );
-    
+
     await prefs.setString(_usersListKey, encodedList);
 
     // Оновлюємо поточну сесію
-    await prefs.setString(
-      _currentUserKey, 
-      jsonEncode(newUser.toJson()),
-    );
+    await prefs.setString(_currentUserKey, jsonEncode(newUser.toJson()));
   }
 
   // ЛОГІН
@@ -44,14 +41,12 @@ class LocalAuthRepository extends IAuthRepository {
 
     try {
       final User foundUser = allUsers.firstWhere(
-        (u) => u.email.trim().toLowerCase() == email.trim().toLowerCase() &&
-               u.password.trim() == password.trim(),
+        (u) =>
+            u.email.trim().toLowerCase() == email.trim().toLowerCase() &&
+            u.password.trim() == password.trim(),
       );
 
-      await prefs.setString(
-        _currentUserKey, 
-        jsonEncode(foundUser.toJson()),
-      );
+      await prefs.setString(_currentUserKey, jsonEncode(foundUser.toJson()));
       return foundUser;
     } catch (e) {
       return null;
@@ -78,10 +73,18 @@ class LocalAuthRepository extends IAuthRepository {
     final prefs = await SharedPreferences.getInstance();
 
     await registerUser(updatedUser);
-    await prefs.setString(
-      _currentUserKey, 
-      jsonEncode(updatedUser.toJson()),
-    );
+    await prefs.setString(_currentUserKey, jsonEncode(updatedUser.toJson()));
+  }
+
+  Future<User?> findUserByEmail(String email) async {
+    final users = await _getAllUsers();
+    try {
+      return users.firstWhere(
+        (user) => user.email.trim().toLowerCase() == email.trim().toLowerCase(),
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
   // ВИХІД
@@ -89,5 +92,6 @@ class LocalAuthRepository extends IAuthRepository {
   Future<void> clearSession() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_currentUserKey);
+    await prefs.remove(_tokenKey);
   }
 }

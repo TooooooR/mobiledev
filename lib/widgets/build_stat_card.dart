@@ -7,11 +7,11 @@ class BuildStatCard extends StatelessWidget {
   final Color color;
 
   const BuildStatCard({
-    required this.title, 
-    required this.value, 
-    required this.icon, 
+    required this.title,
+    required this.value,
+    required this.icon,
     required this.color,
-    super.key
+    super.key,
   });
 
   @override
@@ -22,13 +22,10 @@ class BuildStatCard extends StatelessWidget {
         children: [
           Icon(icon, color: color, size: 40),
           const SizedBox(height: 8),
+          Text(title, style: const TextStyle(fontSize: 14, color: Colors.grey)),
           Text(
-            title, 
-            style: const TextStyle(fontSize: 14, color: Colors.grey)
-          ),
-          Text(
-            value, 
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)
+            value,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
         ],
       ),
