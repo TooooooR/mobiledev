@@ -1,12 +1,12 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_app/models/station.dart';
 import 'package:flutter_app/models/user.dart';
 import 'package:flutter_app/repositories/network_status_service.dart';
-import 'package:flutter_app/widgets/build_stat_card.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_app/repositories/session_user_storage.dart';
+import 'package:flutter_app/widgets/home_station_selector.dart';
+import 'package:flutter_app/widgets/offline_status_bar.dart';
+import 'package:flutter_app/widgets/station_stats_grid.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,15 +16,15 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  String? selectedStationId;
-  User? _user;
-  bool _isLoading = true;
-  bool _isInitialized = false;
-  bool _isOnline = true;
-  bool _offlineAutoLoginWarningShown = false;
-
   final NetworkStatusService _networkStatus = NetworkStatusService();
+  final SessionUserStorage _sessionStorage = SessionUserStorage();
+
   StreamSubscription<bool>? _networkSubscription;
+  User? _user;
+  String? _selectedStationId;
+  bool _isLoading = true;
+  bool _isOnline = true;
+  bool _isInitialized = false;
 
   @override
   void initState() {
@@ -33,126 +33,63 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _startNetworkMonitoring() async {
-    final initialOnline = await _networkStatus.isOnline();
+    _isOnline = await _networkStatus.isOnline();
     if (!mounted) return;
-
-    setState(() {
-      _isOnline = initialOnline;
-    });
+    setState(() {});
 
     _networkSubscription = _networkStatus.onStatusChanged.listen((isOnline) {
       if (!mounted) return;
-
       final wasOnline = _isOnline;
-      setState(() {
-        _isOnline = isOnline;
-      });
+      setState(() => _isOnline = isOnline);
 
-      if (wasOnline && !isOnline) {
-        _showConnectivityMessage('Інтернет-з\'єднання втрачено.');
-      } else if (!wasOnline && isOnline) {
-        _showConnectivityMessage('Інтернет-з\'єднання відновлено.');
+      if (wasOnline != isOnline) {
+        final msg = isOnline
+            ? 'Інтернет-з\'єднання відновлено.'
+            : 'Інтернет-з\'єднання втрачено.';
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(msg)));
       }
     });
-  }
-
-  void _showConnectivityMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
-  }
-
-  Widget _buildOfflineBar() {
-    return Container(
-      color: Colors.red.shade700,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: const SafeArea(
-        top: false,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.wifi_off, color: Colors.white, size: 18),
-            SizedBox(width: 8),
-            Text(
-              'Офлайн режим: перевірте Інтернет-з\'єднання',
-              style: TextStyle(color: Colors.white),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<User?> _loadUser(Object? args) async {
-    if (args is User) return args;
-
-    final prefs = await SharedPreferences.getInstance();
-    final String? userJson = prefs.getString('current_session_user');
-    if (userJson != null) {
-      return User.fromJson(jsonDecode(userJson) as Map<String, dynamic>);
-    }
-    return null;
-  }
-
-  void _syncSelectedStation(User user) {
-    if (user.stations.isEmpty) {
-      selectedStationId = null;
-      return;
-    }
-
-    if (selectedStationId == null ||
-        !user.stations.any((s) => s.id == selectedStationId)) {
-      selectedStationId = user.stations.first.id;
-    }
   }
 
   Future<void> _initializeHomeData() async {
     final args = ModalRoute.of(context)?.settings.arguments;
-    final user = await _loadUser(args);
+    final user = await _sessionStorage.loadUser(args);
     if (!mounted) return;
 
     setState(() {
       _user = user;
       if (user != null) {
-        _syncSelectedStation(user);
+        _selectedStationId = _sessionStorage.resolveSelectedStationId(
+          user,
+          _selectedStationId,
+        );
       }
       _isLoading = false;
     });
 
-    final isOnlineNow = await _networkStatus.isOnline();
-    if (!mounted) return;
-
-    if (_isOnline != isOnlineNow) {
-      setState(() {
-        _isOnline = isOnlineNow;
-      });
-    }
-
-    if (!isOnlineNow && !_offlineAutoLoginWarningShown) {
-      _offlineAutoLoginWarningShown = true;
-      _showConnectivityMessage(
-        'Автовхід виконано без Інтернету. '
-        'Деякі функції можуть бути недоступні.',
+    if (!_isOnline) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Автовхід в офлайн-режимі.')),
       );
     }
   }
 
-  Future<void> _refreshUserFromStorage() async {
-    final user = await _loadUser(null);
+  Future<void> _openProfile() async {
+    await Navigator.pushNamed(context, '/profile', arguments: _user);
+    final refreshedUser = await _sessionStorage.loadUser(null);
     if (!mounted) return;
 
     setState(() {
-      _user = user;
-      if (user != null) {
-        _syncSelectedStation(user);
+      _user = refreshedUser;
+      if (refreshedUser != null) {
+        _selectedStationId = _sessionStorage.resolveSelectedStationId(
+          refreshedUser,
+          _selectedStationId,
+        );
       }
     });
-  }
-
-  Future<void> _openProfile() async {
-    await Navigator.pushNamed(context, '/profile', arguments: _user);
-    if (!mounted) return;
-    await _refreshUserFromStorage();
   }
 
   @override
@@ -172,111 +109,40 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(color: Colors.cyanAccent),
-        ),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final user = _user;
-
     if (user == null) {
       final navigator = Navigator.of(context);
-
-      Future.microtask(() {
-        if (mounted) {
-          navigator.pushReplacementNamed('/login');
-        }
-      });
+      Future.microtask(() => navigator.pushReplacementNamed('/login'));
       return const Scaffold();
     }
 
-    if (user.stations.isEmpty) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('PCMonitor'),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.person),
-              onPressed: _openProfile,
-            ),
-          ],
-        ),
-        bottomNavigationBar: _isOnline ? null : _buildOfflineBar(),
-        body: const Center(
-          child: Text('У вас ще немає станцій. Додайте їх у профілі.'),
-        ),
-      );
-    }
-
-    final currentStation = user.stations.firstWhere(
-      (s) => s.id == selectedStationId,
+    final station = _sessionStorage.findSelectedStation(
+      user,
+      _selectedStationId,
     );
 
     return Scaffold(
       appBar: AppBar(
-        title: DropdownButtonHideUnderline(
-          child: DropdownButton<String>(
-            value: selectedStationId,
-            dropdownColor: Colors.grey[900],
-            icon: const Icon(Icons.arrow_drop_down, color: Colors.cyanAccent),
-            items: user.stations.map((Station station) {
-              return DropdownMenuItem<String>(
-                value: station.id,
-                child: Text(
-                  station.name,
-                  style: const TextStyle(color: Colors.white),
-                ),
-              );
-            }).toList(),
-            onChanged: (String? newId) {
-              setState(() {
-                selectedStationId = newId;
-              });
-            },
-          ),
+        title: HomeStationSelector(
+          selectedStationId: _selectedStationId,
+          stations: user.stations,
+          onChanged: (id) => setState(() => _selectedStationId = id),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.person),
-            onPressed: _openProfile,
-          ),
-          const SizedBox(width: 8),
+          IconButton(onPressed: _openProfile, icon: const Icon(Icons.person)),
         ],
       ),
-      bottomNavigationBar: _isOnline ? null : _buildOfflineBar(),
-      body: GridView.count(
+      bottomNavigationBar: _isOnline ? null : const OfflineStatusBar(),
+      body: Padding(
         padding: const EdgeInsets.all(16),
-        crossAxisCount: 2,
-        mainAxisSpacing: 16,
-        crossAxisSpacing: 16,
-        children: [
-          BuildStatCard(
-            title: 'CPU Load',
-            value: '${currentStation.stats.cpuLoad.toStringAsFixed(0)}%',
-            icon: Icons.speed,
-            color: Colors.orange,
-          ),
-          BuildStatCard(
-            title: 'RAM',
-            value: '${currentStation.stats.ramUsage.toStringAsFixed(0)} MB',
-            icon: Icons.memory,
-            color: Colors.blue,
-          ),
-          BuildStatCard(
-            title: 'Temp',
-            value: '${currentStation.stats.temperature.toStringAsFixed(0)}°C',
-            icon: Icons.thermostat,
-            color: Colors.red,
-          ),
-          BuildStatCard(
-            title: 'Uptime',
-            value: currentStation.stats.uptime,
-            icon: Icons.timer,
-            color: Colors.green,
-          ),
-        ],
+        child: station == null
+            ? const Center(
+                child: Text('У вас ще немає станцій. Додайте їх у профілі.'),
+              )
+            : StationStatsGrid(station: station),
       ),
     );
   }

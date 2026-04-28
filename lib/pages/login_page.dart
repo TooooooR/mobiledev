@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/models/user.dart';
-import 'package:flutter_app/repositories/local_auth_repository.dart';
-import 'package:flutter_app/repositories/network_status_service.dart';
+import 'package:flutter_app/repositories/api_auth_repository.dart';
+import 'package:flutter_app/repositories/i_auth_repository.dart';
 import 'package:flutter_app/widgets/app_input.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -14,34 +14,25 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passController = TextEditingController();
-  final _authRepo = LocalAuthRepository();
-  final _networkStatus = NetworkStatusService();
+  final IAuthRepository _authRepo = ApiAuthRepository();
 
   void _handleLogin() async {
-    final isOnline = await _networkStatus.isOnline();
-    if (!isOnline) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Немає з\'єднання з Інтернетом. Вхід неможливий.'),
-          ),
-        );
-      }
+    if (_emailController.text.trim().isEmpty ||
+        _passController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Введіть email і пароль.')));
       return;
     }
 
     final User? user = await _authRepo.login(
-      _emailController.text, 
-      _passController.text
+      _emailController.text.trim(),
+      _passController.text.trim(),
     );
 
     if (user != null) {
       if (mounted) {
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          '/home',
-              (route) => false,
-        );
+        Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
       }
     } else {
       if (mounted) {
@@ -69,21 +60,21 @@ class _LoginScreenState extends State<LoginScreen> {
           children: [
             const Icon(Icons.monitor_heart, size: 80, color: Colors.cyanAccent),
             const Text(
-              'PCMonitor', 
-              style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)
-              ),
+              'PCMonitor',
+              style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 40),
             AppInput(
-              label: 'Email', 
-              icon: Icons.email, 
-              controller: _emailController
-              ),
+              label: 'Email',
+              icon: Icons.email,
+              controller: _emailController,
+            ),
             const SizedBox(height: 16),
             AppInput(
-              label: 'Password', 
-              icon: Icons.lock, 
-              isPassword: true, 
-              controller: _passController
+              label: 'Password',
+              icon: Icons.lock,
+              isPassword: true,
+              controller: _passController,
             ),
             const SizedBox(height: 24),
             ElevatedButton(

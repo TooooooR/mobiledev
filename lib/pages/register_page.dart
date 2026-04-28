@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/models/station.dart';
 import 'package:flutter_app/models/system_stats.dart';
 import 'package:flutter_app/models/user.dart';
-import 'package:flutter_app/repositories/local_auth_repository.dart';
+import 'package:flutter_app/repositories/api_auth_repository.dart';
+import 'package:flutter_app/repositories/i_auth_repository.dart';
 import 'package:flutter_app/widgets/app_input.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -18,20 +19,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passController = TextEditingController();
-  final _authRepo = LocalAuthRepository();
+  final IAuthRepository _authRepo = ApiAuthRepository();
 
   void _register() async {
     if (_formKey.currentState!.validate()) {
       final defaultStations = [
         Station(
-          id: '1', 
-          name: 'Main Server', 
+          id: '1',
+          name: 'Main Server',
           stats: const SystemStats(
-            cpuLoad: 10, 
-            ramUsage: 2048, 
-            temperature: 40, 
-            uptime: '0h 0m'
-            )
+            cpuLoad: 10,
+            ramUsage: 2048,
+            temperature: 40,
+            uptime: '0h 0m',
+          ),
         ),
       ];
 
@@ -44,9 +45,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       await _authRepo.registerUser(newUser);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Реєстрація успішна!')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Реєстрація успішна!')));
         Navigator.pop(context);
       }
     }
@@ -63,7 +64,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Column(
             children: [
               AppInput(
-                label: "Ім'я", 
+                label: "Ім'я",
                 icon: Icons.person,
                 controller: _nameController,
                 validator: (value) {
@@ -78,7 +79,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: 16),
               AppInput(
-                label: 'Email', 
+                label: 'Email',
                 icon: Icons.email,
                 controller: _emailController,
                 validator: (value) {
@@ -90,8 +91,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: 16),
               AppInput(
-                label: 'Password', 
-                icon: Icons.lock, 
+                label: 'Password',
+                icon: Icons.lock,
                 isPassword: true,
                 controller: _passController,
                 validator: (value) {
