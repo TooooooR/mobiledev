@@ -13,6 +13,20 @@ class User {
     required this.stations,
   });
 
+  User copyWith({
+    String? name,
+    String? email,
+    String? password,
+    List<Station>? stations,
+  }) {
+    return User(
+      name: name ?? this.name,
+      email: email ?? this.email,
+      password: password ?? this.password,
+      stations: stations ?? this.stations,
+    );
+  }
+
   Map<String, dynamic> toJson() => {
     'name': name,
     'email': email,

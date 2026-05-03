@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_app/models/user.dart';
-import 'package:flutter_app/repositories/api_auth_repository.dart';
-import 'package:flutter_app/repositories/i_auth_repository.dart';
+import 'package:flutter_app/cubits/auth_cubit.dart';
 import 'package:flutter_app/widgets/app_input.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,7 +13,6 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passController = TextEditingController();
-  final IAuthRepository _authRepo = ApiAuthRepository();
 
   void _handleLogin() async {
     if (_emailController.text.trim().isEmpty ||
@@ -25,22 +23,10 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    final User? user = await _authRepo.login(
-      _emailController.text.trim(),
-      _passController.text.trim(),
-    );
-
-    if (user != null) {
-      if (mounted) {
-        Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
-      }
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Невірний e-mail або пароль!')),
+    context.read<AuthCubit>().login(
+          email: _emailController.text.trim(),
+          password: _passController.text.trim(),
         );
-      }
-    }
   }
 
   @override
@@ -52,40 +38,75 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.monitor_heart, size: 80, color: Colors.cyanAccent),
-            const Text(
-              'PCMonitor',
-              style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 40),
-            AppInput(
-              label: 'Email',
-              icon: Icons.email,
-              controller: _emailController,
-            ),
-            const SizedBox(height: 16),
-            AppInput(
-              label: 'Password',
-              icon: Icons.lock,
-              isPassword: true,
-              controller: _passController,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _handleLogin,
-              child: const Text('Увійти'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pushNamed(context, '/register'),
-              child: const Text('Немає акаунту? Реєстрація'),
-            ),
-          ],
+    return BlocListener<AuthCubit, AuthState>(
+      listenWhen: (previous, current) =>
+          previous.status != current.status || previous.flow != current.flow,
+      listener: (context, state) {
+        if (state.flow != AuthFlow.login) return;
+
+        if (state.status == AuthStatus.success) {
+          Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+        }
+
+        if (state.status == AuthStatus.failure) {
+          final message = state.message ?? 'Помилка входу.';
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(message)));
+        }
+      },
+      child: Scaffold(
+        body: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.monitor_heart,
+                size: 80,
+                color: Colors.cyanAccent,
+              ),
+              const Text(
+                'PCMonitor',
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 40),
+              AppInput(
+                label: 'Email',
+                icon: Icons.email,
+                controller: _emailController,
+              ),
+              const SizedBox(height: 16),
+              AppInput(
+                label: 'Password',
+                icon: Icons.lock,
+                isPassword: true,
+                controller: _passController,
+              ),
+              const SizedBox(height: 24),
+              BlocBuilder<AuthCubit, AuthState>(
+                builder: (context, state) {
+                  final isLoading =
+                      state.status == AuthStatus.loading &&
+                          state.flow == AuthFlow.login;
+
+                  return ElevatedButton(
+                    onPressed: isLoading ? null : _handleLogin,
+                    child: isLoading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Увійти'),
+                  );
+                },
+              ),
+              TextButton(
+                onPressed: () => Navigator.pushNamed(context, '/register'),
+                child: const Text('Немає акаунту? Реєстрація'),
+              ),
+            ],
+          ),
         ),
       ),
     );

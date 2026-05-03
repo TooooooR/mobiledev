@@ -9,6 +9,9 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiAuthRepository extends IAuthRepository {
+  ApiAuthRepository({required LocalAuthRepository localRepository})
+      : _local = localRepository;
+
   static const _tokenKey = 'auth_token';
   static const _rawBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
@@ -23,7 +26,7 @@ class ApiAuthRepository extends IAuthRepository {
   static final _profileUrl = Uri.parse('$_baseUrl/auth/profile');
   static final _stationsUrl = Uri.parse('$_baseUrl/auth/stations');
 
-  final LocalAuthRepository _local = LocalAuthRepository();
+  final LocalAuthRepository _local;
 
   @override
   Future<void> registerUser(User user) async {
