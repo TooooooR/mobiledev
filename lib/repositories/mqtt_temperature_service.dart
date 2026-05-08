@@ -2,9 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:mqtt_client/mqtt_browser_client.dart';
+import 'package:flutter_app/repositories/mqtt_client_factory.dart';
 import 'package:mqtt_client/mqtt_client.dart';
-import 'package:mqtt_client/mqtt_server_client.dart';
 
 class MqttTemperatureService {
   MqttTemperatureService({
@@ -54,14 +53,16 @@ class MqttTemperatureService {
     required String server,
     required String clientId,
     required int port,
-    required String? websocketServer,
     required int websocketPort,
+    required String? websocketServer,
   }) {
-    if (kIsWeb) {
-      final wsServer = websocketServer ?? 'ws://$server';
-      return MqttBrowserClient.withPort(wsServer, clientId, websocketPort);
-    }
-    return MqttServerClient.withPort(server, clientId, port);
+    return createMqttClient(
+      server: server,
+      clientId: clientId,
+      port: port,
+      websocketPort: websocketPort,
+      websocketServer: websocketServer,
+    );
   }
 
   Future<void> connect() async {

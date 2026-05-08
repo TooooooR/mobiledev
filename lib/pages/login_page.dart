@@ -1,3 +1,4 @@
+import 'package:flashlight_plugin/flashlight_plugin.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/cubits/auth_cubit.dart';
 import 'package:flutter_app/widgets/app_input.dart';
@@ -29,6 +30,12 @@ class _LoginScreenState extends State<LoginScreen> {
         );
   }
 
+  Future<void> _toggleFlashlight() async {
+    try {
+      await FlashlightPlugin.onLight();
+    } catch (_) {}
+  }
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -55,58 +62,75 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       },
       child: Scaffold(
-        body: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.monitor_heart,
-                size: 80,
-                color: Colors.cyanAccent,
-              ),
-              const Text(
-                'PCMonitor',
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 40),
-              AppInput(
-                label: 'Email',
-                icon: Icons.email,
-                controller: _emailController,
-              ),
-              const SizedBox(height: 16),
-              AppInput(
-                label: 'Password',
-                icon: Icons.lock,
-                isPassword: true,
-                controller: _passController,
-              ),
-              const SizedBox(height: 24),
-              BlocBuilder<AuthCubit, AuthState>(
-                builder: (context, state) {
-                  final isLoading =
-                      state.status == AuthStatus.loading &&
-                          state.flow == AuthFlow.login;
+        body: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.monitor_heart,
+                    size: 80,
+                    color: Colors.cyanAccent,
+                  ),
+                  const Text(
+                    'PCMonitor',
+                    style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 40),
+                  AppInput(
+                    label: 'Email',
+                    icon: Icons.email,
+                    controller: _emailController,
+                  ),
+                  const SizedBox(height: 16),
+                  AppInput(
+                    label: 'Password',
+                    icon: Icons.lock,
+                    isPassword: true,
+                    controller: _passController,
+                  ),
+                  const SizedBox(height: 24),
+                  BlocBuilder<AuthCubit, AuthState>(
+                    builder: (context, state) {
+                      final isLoading =
+                          state.status == AuthStatus.loading &&
+                              state.flow == AuthFlow.login;
 
-                  return ElevatedButton(
-                    onPressed: isLoading ? null : _handleLogin,
-                    child: isLoading
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Увійти'),
-                  );
-                },
+                      return ElevatedButton(
+                        onPressed: isLoading ? null : _handleLogin,
+                        child: isLoading
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text('Увійти'),
+                      );
+                    },
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pushNamed(context, '/register'),
+                    child: const Text('Немає акаунту? Реєстрація'),
+                  ),
+                ],
               ),
-              TextButton(
-                onPressed: () => Navigator.pushNamed(context, '/register'),
-                child: const Text('Немає акаунту? Реєстрація'),
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: Opacity(
+                opacity: 0.2,
+                child: IconButton(
+                  onPressed: _toggleFlashlight,
+                  icon: const Icon(Icons.flash_on),
+                ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
